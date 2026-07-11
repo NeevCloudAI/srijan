@@ -8,7 +8,7 @@ An AI-Powered Engineering Assistant for Chat Platforms
 
 **Version:** 1.0 
 
-1 
+ 
 
 ## **1. Problem Statement** 
 
@@ -38,7 +38,7 @@ Teams that build agent platforms for external customers often have no internal u
 
 Both problems share the same solution: a service that lets engineers delegate well-bounded tasks to an AI agent directly from their chat window, without ever leaving it while simultaneously serving as a live internal consumer of the agent platform itself. 
 
-2 
+ 
 
 ## **2. Goals / Non-Goals** 
 
@@ -57,7 +57,7 @@ The following outcomes define success for Srijan v1:
 
 
 
-3 
+ 
 
 ## **2.2 Non-Goals** 
 
@@ -74,7 +74,7 @@ The following are explicitly out of scope for Srijan v1 to keep the first releas
 
 
 
-4 
+ 
 
 ## **3. Implementation Plan** 
 
@@ -111,7 +111,7 @@ Srijan is composed of five core components that handle the complete lifecycle of
 
 - Validates the request authenticity using a shared secret token 
 
-5 
+ 
 
 - Returns an immediate acknowledgment response within 3 seconds 
 
@@ -173,13 +173,15 @@ Srijan is composed of five core components that handle the complete lifecycle of
 
 **3.3 High-Level Architecture Diagram** 
 
-6 
+ 
 
 The diagram below illustrates the three logical zones of the Srijan architecture and how data flows between them: 
 
+![Srijan high-level architecture](docs/images/architecture.png)
+
 **Figure 1:** _Srijan high-level architecture — three logical zones_ 
 
-7 
+ 
 
 ## **3.4 APIs** 
 
@@ -191,7 +193,7 @@ When an engineer types a slash command, the chat platform sends an HTTP POST to 
 
 Endpoints: POST /webhook/dev              → for coding tasks POST /webhook/debug            → for debugging tasks Headers: Content-Type: application/x-www-form-urlencoded Body (form fields): token       : <verification_token>    // shared secret for validation user_id     : <user_id>              // who triggered the command channel_id  : <channel_id>           // where to post results command     : /command-dev           // the slash command used text        : fix the login 404 bug  // the task description Response (must be within 3 seconds): HTTP 200 { "text": "Working on it... I'll update this thread." } 
 
-8 
+ 
 
 ## **3.4.2 Outbound API — Chat Bot Messages** 
 
@@ -218,7 +220,7 @@ Srijan uses five Agent Platform API endpoints to manage the full agent lifecycle
 
 
 
-9 
+ 
 
 |**Operation**|**Method + Endpoint**|**Purpose**|**When Called**|
 |---|---|---|---|
@@ -244,7 +246,7 @@ Credentials are injected into the agent sandbox at creation time via the Create 
 
 All credentials are stored as environment variables on the Srijan server and injected at runtime. The egress policy on every agent is set to allow_list — each agent can only communicate with explicitly whitelisted external hosts. Dev agents may only reach the code repository host. Debug agents may only reach cluster endpoints and the database. A 15-minute hard timeout applies to all agents. 
 
-10 
+ 
 
 ## **3.5 Sequence Diagram** 
 
@@ -252,15 +254,19 @@ The sequence diagrams below illustrate the precise message flow for both command
 
 ## **3.5.1 /command-dev — Coding Task Flow** 
 
+![Sequence diagram for /command-dev](docs/images/dev-sequence.png)
+
 **Figure 2:** _Sequence diagram — /command-dev coding task_ 
 
-11 
+ 
 
 ## **3.5.2 /command-debug — Debugging Task Flow** 
 
+![Sequence diagram for /command-debug](docs/images/debug-sequence.png)
+
 **Figure 3:** _Sequence diagram — /command-debug investigation task_ 
 
-12 
+ 
 
 ## **4. Database Schema (PostgreSQL)** 
 
@@ -296,7 +302,7 @@ Three tables capture the full state and history of every Srijan task:
 
 
 
-13 
+ 
 
 |**Column**|**Type**|**Description**|
 |---|---|---|
@@ -331,5 +337,5 @@ The project is divided into 5 phases, each delivering a working milestone. Each 
 
 
 
-14 
+ 
 
