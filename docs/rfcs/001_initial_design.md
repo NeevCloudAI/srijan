@@ -177,7 +177,7 @@ Srijan is composed of five core components that handle the complete lifecycle of
 
 The diagram below illustrates the three logical zones of the Srijan architecture and how data flows between them: 
 
-![Srijan high-level architecture](docs/images/architecture.png)
+![Srijan high-level architecture](../images/architecture.png)
 
 **Figure 1:** _Srijan high-level architecture — three logical zones_ 
 
@@ -254,7 +254,7 @@ The sequence diagrams below illustrate the precise message flow for both command
 
 ## **3.5.1 /command-dev — Coding Task Flow** 
 
-![Sequence diagram for /command-dev](docs/images/dev-sequence.png)
+![Sequence diagram for /command-dev](../images/dev-sequence.png)
 
 **Figure 2:** _Sequence diagram — /command-dev coding task_ 
 
@@ -262,7 +262,7 @@ The sequence diagrams below illustrate the precise message flow for both command
 
 ## **3.5.2 /command-debug — Debugging Task Flow** 
 
-![Sequence diagram for /command-debug](docs/images/debug-sequence.png)
+![Sequence diagram for /command-debug](../images/debug-sequence.png)
 
 **Figure 3:** _Sequence diagram — /command-debug investigation task_ 
 
