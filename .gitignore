@@ -1,0 +1,62 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ── Virtual environments ─────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Environment variables (NEVER commit secrets) ─────────
+.env
+.env.local
+.env.*.local
+
+# ── macOS ─────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── VS Code / Antigravity IDE ───────────────────────────
+.vscode/
+*.code-workspace
+
+# ── PyCharm ───────────────────────────────────────────────
+.idea/
+
+# ── Testing / coverage ───────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
+
+# ── Docker ────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── OS junk ───────────────────────────────────────────────
+Thumbs.db
