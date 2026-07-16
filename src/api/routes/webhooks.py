@@ -1,4 +1,5 @@
 import asyncio
+import functools
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -6,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.chat.security import verify_token
-from src.db.constants import CommandType, JobStatus
+from src.db.constants import CommandType
 from src.db.models import Job
 from src.db.session import get_db
 from src.logging import get_logger
@@ -50,10 +51,14 @@ async def _handle_command(request: Request, db: AsyncSession, command_type: Comm
     await db.commit()
     await db.refresh(job)
 
-    # Hand off to the background worker immediately — this request must
-    # return within Mattermost's 3-second window. Use thread pool to avoid
-    # blocking the async event loop with the Redis network call.
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(_executor, process_job.apply_async, [str(job.id)], {"queue": f"{command_type}-queue"})
+    await loop.run_in_executor(
+        _executor,
+        functools.partial(
+            process_job.apply_async,
+            args=[str(job.id)],
+            queue=f"{command_type}-queue"
+        )
+    )
 
     return JSONResponse(content={"response_type": "ephemeral", "text": ACK_MESSAGE})

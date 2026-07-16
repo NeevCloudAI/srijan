@@ -41,7 +41,7 @@ class Job(Base):
     channel_id: Mapped[str] = mapped_column(String(128))
     root_post_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     task_text: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default=JobStatus.QUEUED)
+    status: Mapped[str] = mapped_column(String(20), default=JobStatus.QUEUED, index=True)
     result_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
