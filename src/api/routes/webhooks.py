@@ -45,8 +45,12 @@ async def _handle_command(request: Request, db: AsyncSession, command_type: str)
     await db.commit()
     await db.refresh(job)
 
+    import asyncio
+
     # Hand off to the background worker immediately — this request must
     # return within Mattermost's 3-second window, so no waiting here.
-    process_job.apply_async(args=[str(job.id)], queue=f"{command_type}-queue")
+    await asyncio.to_thread(
+        process_job.apply_async, args=[str(job.id)], queue=f"{command_type}-queue"
+    )
 
     return JSONResponse(content={"response_type": "ephemeral", "text": ACK_MESSAGE})
