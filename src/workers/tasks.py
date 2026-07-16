@@ -8,7 +8,13 @@ from src.workers.celery_app import celery_app
 logger = get_logger(__name__)
 
 
-@celery_app.task(name="workers.process_job", bind=True, max_retries=3, default_retry_delay=5)
+`@celery_app.task`(
+    name="workers.process_job",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=5,
+    autoretry_for=(Exception,)
+)
 def process_job(self, job_id: str) -> None:
     """
     Entry point for background processing of a queued job.
