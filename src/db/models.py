@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, DateTime, Text
+from sqlalchemy import CheckConstraint, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+from src.db.constants import CommandType, JobStatus
 
 
 class Base(DeclarativeBase):
@@ -23,9 +25,12 @@ class Job(Base):
 
     __tablename__ = "jobs"
     __table_args__ = (
-        CheckConstraint("command_type IN ('dev', 'debug')", name="ck_jobs_command_type"),
         CheckConstraint(
-            "status IN ('queued', 'provisioning', 'running', 'completed', 'failed', 'timed_out')",
+            f"command_type IN ({', '.join(repr(ct.value) for ct in CommandType)})",
+            name="ck_jobs_command_type",
+        ),
+        CheckConstraint(
+            f"status IN ({', '.join(repr(js.value) for js in JobStatus)})",
             name="ck_jobs_status",
         ),
     )
@@ -36,7 +41,7 @@ class Job(Base):
     channel_id: Mapped[str] = mapped_column(String(128))
     root_post_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     task_text: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(20), default="queued")
+    status: Mapped[str] = mapped_column(String(20), default=JobStatus.QUEUED)
     result_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

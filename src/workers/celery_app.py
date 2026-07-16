@@ -1,18 +1,27 @@
-from celery import Celery
+import uuid
 
-from src.config import settings
+from src.db.models import Job
+from src.db.sync_session import get_sync_db
+from src.logging import get_logger
+from src.workers.celery_app import celery_app
 
-celery_app = Celery(
-    "srijan",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
-    include=["src.workers.tasks"],
-)
+logger = get_logger(__name__)
 
-celery_app.conf.update(
-    # dev-queue / debug-queue are chosen per-call via `apply_async(..., queue=...)`
-    # in the webhook handler — this is just the fallback if none is given.
-    task_default_queue="dev-queue",
-    task_acks_late=True,
-    worker_prefetch_multiplier=1,
-)
+
+@celery_app.task(name="workers.process_job", bind=True, max_retries=3, default_retry_delay=5, autoretry_for=(Exception,))
+def process_job(self, job_id: str) -> None:
+    """
+    Entry point for background processing of a queued job.
+
+    Phase 2: just prove the queue → worker → DB path works end-to-end.
+    Phase 3 will replace the body with real Agent Platform provisioning.
+    """
+    with get_sync_db() as db:
+        job = db.get(Job, uuid.UUID(job_id))
+        if job is None:
+            logger.error(f"process_job: job {job_id} not found")
+            return
+
+        logger.info(f"Picked up job {job.id} ({job.command_type}): {job.task_text!r}")
+        job.status = "provisioning"
+        db.commit()

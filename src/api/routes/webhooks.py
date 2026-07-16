@@ -1,8 +1,12 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.chat.security import verify_token
+from src.db.constants import CommandType, JobStatus
 from src.db.models import Job
 from src.db.session import get_db
 from src.logging import get_logger
@@ -10,6 +14,7 @@ from src.workers.tasks import process_job
 
 router = APIRouter()
 logger = get_logger(__name__)
+_executor = ThreadPoolExecutor(max_workers=2)
 
 ACK_MESSAGE = "Working on it! I'll update this thread shortly."
 
@@ -17,16 +22,16 @@ ACK_MESSAGE = "Working on it! I'll update this thread shortly."
 @router.post("/webhook/dev")
 async def handle_dev_command(request: Request, db: AsyncSession = Depends(get_db)) -> JSONResponse:
     """Receives /neevai-dev slash commands from Mattermost."""
-    return await _handle_command(request, db, command_type="dev")
+    return await _handle_command(request, db, command_type=CommandType.DEV)
 
 
 @router.post("/webhook/debug")
 async def handle_debug_command(request: Request, db: AsyncSession = Depends(get_db)) -> JSONResponse:
     """Receives /neevai-debug slash commands from Mattermost."""
-    return await _handle_command(request, db, command_type="debug")
+    return await _handle_command(request, db, command_type=CommandType.DEBUG)
 
 
-async def _handle_command(request: Request, db: AsyncSession, command_type: str) -> JSONResponse:
+async def _handle_command(request: Request, db: AsyncSession, command_type: CommandType) -> JSONResponse:
     form = await request.form()
 
     if not verify_token(form.get("token", "")):
@@ -45,12 +50,10 @@ async def _handle_command(request: Request, db: AsyncSession, command_type: str)
     await db.commit()
     await db.refresh(job)
 
-    import asyncio
-
     # Hand off to the background worker immediately — this request must
-    # return within Mattermost's 3-second window, so no waiting here.
-    await asyncio.to_thread(
-        process_job.apply_async, args=[str(job.id)], queue=f"{command_type}-queue"
-    )
+    # return within Mattermost's 3-second window. Use thread pool to avoid
+    # blocking the async event loop with the Redis network call.
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(_executor, process_job.apply_async, [str(job.id)], {"queue": f"{command_type}-queue"})
 
     return JSONResponse(content={"response_type": "ephemeral", "text": ACK_MESSAGE})

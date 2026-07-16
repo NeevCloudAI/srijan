@@ -1,5 +1,6 @@
 import uuid
 
+from src.db.constants import JobStatus
 from src.db.models import Job
 from src.db.sync_session import get_sync_db
 from src.logging import get_logger
@@ -8,13 +9,7 @@ from src.workers.celery_app import celery_app
 logger = get_logger(__name__)
 
 
-`@celery_app.task`(
-    name="workers.process_job",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=5,
-    autoretry_for=(Exception,)
-)
+@celery_app.task(name="workers.process_job", bind=True, max_retries=3, default_retry_delay=5, autoretry_for=(Exception,))
 def process_job(self, job_id: str) -> None:
     """
     Entry point for background processing of a queued job.
@@ -29,5 +24,5 @@ def process_job(self, job_id: str) -> None:
             return
 
         logger.info(f"Picked up job {job.id} ({job.command_type}): {job.task_text!r}")
-        job.status = "provisioning"
+        job.status = JobStatus.PROVISIONING
         db.commit()
