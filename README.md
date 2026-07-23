@@ -108,7 +108,7 @@ See `.env.example` for a full template.
 
 ## Local Development
 
-See [QUICKSTART.md](QUICKSTART.md) for step-by-step setup instructions.
+See [QUICKSTART.md](docs/quickstart.md) for step-by-step setup instructions.
 
 ---
 
