@@ -1,3 +1,4 @@
+from amqp import basic_message
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
@@ -35,6 +36,9 @@ _PROGRESS_FLUSH_THRESHOLD = 400
     soft_time_limit=settings.agent_task_soft_time_limit_seconds,
 )
 def process_job(self, job_id: str) -> None:
+    """Drives a single job end-to-end: provisions an agent, streams its
+    output to the originating Mattermost thread, records the outcome in
+    the database, and always cleans up the agent afterwards."""
     with get_sync_db() as db:
         job = db.get(Job, uuid.UUID(job_id))
         if job is None:
@@ -47,10 +51,13 @@ def process_job(self, job_id: str) -> None:
         buffer_len = 0
 
         def log_and_stream(message: str, source: str = "system") -> None:
+            """Persist a log line to the `logs` table for this job."""
             db.add(Log(job_id=job.id, message=message, source=source))
             db.commit()
 
         def flush_progress(force: bool = False) -> None:
+            """Post buffered agent output to Mattermost once the threshold is hit
+            (or immediately if `force=True`), then clear the buffer."""
             nonlocal buffer, buffer_len
             if not buffer or (buffer_len < _PROGRESS_FLUSH_THRESHOLD and not force):
                 return
@@ -60,10 +67,12 @@ def process_job(self, job_id: str) -> None:
             log_and_stream(chunk, source="agent")
 
         def on_progress(text: str) -> None:
+            """Callback passed to run_agent_task — buffers streamed stdout chunks
+            and triggers a flush once enough output has accumulated."""
             nonlocal buffer, buffer_len
             buffer.append(text)
             buffer_len += len(text)
-            flush_progress()
+    flush_progress()
 
         try:
             logger.info(f"Picked up job {job.id} ({job.command_type}): {job.task_text!r}")
