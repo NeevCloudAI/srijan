@@ -63,16 +63,6 @@ docker compose ps
 
 ## Step 4 — Apply the database migration
 
-```bash
-PGPASSWORD=srijan psql -h localhost -U srijan -d srijan -f migrations/v0.1.0_initial_schema.sql
-```
-
-Expected output:
-```
-CREATE EXTENSION
-CREATE TABLE
-CREATE INDEX
-```
 
 ---
 
