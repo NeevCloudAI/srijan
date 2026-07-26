@@ -48,14 +48,14 @@ def run_agent_task(
     command_type: str,
     task_text: str,
     on_progress,  # Callable[[str], None] — called for each stdout chunk
-) -> tuple[str, TaskResult]:
+) -> tuple[str, str, TaskResult]:
     """
     Provisions an agent, runs one task on it, streams progress via
     `on_progress`, and always deletes the agent afterwards.
-
-    Returns (platform_agent_id, TaskResult). Raises AgentPlatformError /
-    TransientAgentPlatformError on failure — caller decides how to handle
-    Job/Log/Mattermost updates.
+    
+    Returns (platform_agent_id, resolved_template, TaskResult). Raises
+    AgentPlatformError / TransientAgentPlatformError on failure — caller
+    decides how to handle
     """
     spec: AgentSpec = get_agent_spec(command_type)
     agent_name = f"srijan-{command_type}-{str(job_id)[:8]}"
@@ -104,7 +104,7 @@ def run_agent_task(
             pr_match = _PR_URL_RE.search(full_output)
             result_url = pr_match.group(0) if pr_match else None
 
-            return platform_agent_id, TaskResult(exit_code=exit_code, result_url=result_url, full_output=full_output)
+            return platform_agent_id, spec.template, TaskResult(exit_code=exit_code, result_url=result_url, full_output=full_output)
 
     except NeevAIError as exc:
         if is_transient(exc):

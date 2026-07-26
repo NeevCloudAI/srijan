@@ -45,8 +45,8 @@ class Settings(BaseSettings):
     # Command template run inside the agent sandbox. {task} is replaced with
     # the user's task text. CONFIRM with the team / `agent_templates.get()`
     # before relying on this in production — see docs/rfcs/003_agent_integration.md
-    dev_agent_command_template: str = 'claude-code --print "{task}"'
-    debug_agent_command_template: str = 'claude-code --print "{task}"'
+    dev_agent_command_template: str = 'claude-code --print {task}'
+    debug_agent_command_template: str = 'claude-code --print {task}'
 
     # Hard ceiling on how long a single job may run (Celery task time limit)
     agent_task_time_limit_seconds: int = 900   # 15 minutes, per design doc

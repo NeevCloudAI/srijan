@@ -3,6 +3,8 @@ import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
 
+
+
 from src.agents.client import (
     AgentPlatformError,
     TransientAgentPlatformError,
@@ -12,7 +14,7 @@ from src.agents.client import (
 from src.chat.client import MattermostClient
 from src.config import settings
 from src.db.constants import AgentStatus, JobStatus
-from src.db.models import Agent, Job, Log
+from src.db.models import Agent, Job, Log, _utcnow
 from src.db.sync_session import get_sync_db
 from src.logging import get_logger
 from src.workers.celery_app import celery_app
@@ -80,7 +82,7 @@ def process_job(self, job_id: str) -> None:
             db.commit()
             log_and_stream("Provisioning agent…")
 
-            platform_agent_id, result = run_agent_task(
+            platform_agent_id, resolved_template, result = run_agent_task(
                 job_id=job.id,
                 command_type=job.command_type,
                 task_text=job.task_text,
@@ -89,7 +91,7 @@ def process_job(self, job_id: str) -> None:
             db.add(Agent(
                 job_id=job.id,
                 platform_agent_id=platform_agent_id,
-                template_name=job.command_type,
+                template_name=resolved_template,
                 status=AgentStatus.READY,
             ))
             job.status = JobStatus.RUNNING
@@ -119,6 +121,11 @@ def process_job(self, job_id: str) -> None:
             mm.post_message(job.channel_id, "⏱️ This task took too long and was stopped.", root_id=job.root_post_id)
             log_and_stream("Task timed out.")
 
+        except TransientAgentPlatformError:
+            # Re-raise so Celery's autoretry_for wrapper can retry the task.
+            # Do NOT mark the job FAILED here — a fresh attempt is coming.
+            raise
+
         except AgentPlatformError as exc:
             job.status = JobStatus.FAILED
             job.error_message = str(exc)
@@ -139,6 +146,6 @@ def process_job(self, job_id: str) -> None:
             if platform_agent_id:
                 delete_agent(platform_agent_id)
                 db.query(Agent).filter(Agent.platform_agent_id == platform_agent_id).update(
-                    {"status": AgentStatus.DELETED}
+                    {"status": AgentStatus.DELETED, "deleted_at": _utcnow()}
                 )
             db.commit()
