@@ -3,6 +3,7 @@ Per-command-type configuration: which template to use, what environment
 variables and egress hosts to inject, and how to build the shell command
 that actually drives the agent.
 """
+import shlex
 from dataclasses import dataclass
 
 from src.config import settings
@@ -17,10 +18,10 @@ class AgentSpec:
     command_template: str
 
     def build_command(self, task_text: str) -> list[str]:
-        """Returns an argv-style command list, safe from shell injection —
-        the task text is passed as a single argument, never interpolated
-        into a shell string."""
-        rendered = self.command_template.format(task=task_text)
+        """Returns an argv-style command list. task_text is shell-quoted
+        via shlex.quote before substitution to prevent injection into the
+        rendered sh -c string."""
+        rendered = self.command_template.format(task=shlex.quote(task_text))
         return ["sh", "-c", rendered]
 
 
