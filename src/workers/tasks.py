@@ -11,9 +11,11 @@ from src.agents.client import (
     delete_agent,
     run_agent_task,
 )
+from src.agents.templates import get_agent_spec
 from src.chat.client import MattermostClient
 from src.config import settings
 from src.db.constants import AgentStatus, JobStatus
+from src.db.models import Agent, Job, Log, _utcnow
 from src.db.models import Agent, Job, Log, _utcnow
 from src.db.sync_session import get_sync_db
 from src.logging import get_logger
@@ -88,6 +90,9 @@ def process_job(self, job_id: str) -> None:
                 task_text=job.task_text,
                 on_progress=on_progress,
             )
+
+            # Fix: store the actual template used, not the command type string
+            actual_template = get_agent_spec(job.command_type).template
             db.add(Agent(
                 job_id=job.id,
                 platform_agent_id=platform_agent_id,
@@ -133,9 +138,8 @@ def process_job(self, job_id: str) -> None:
             log_and_stream(f"Agent platform error: {exc}")
 
         except Exception as exc:
-            # Catch-all: any unexpected bug (like a bad SDK call) must still
-            # mark the job failed and clean up — never leave it stuck in
-            # provisioning/running forever.
+            # Catch-all: any unexpected bug must still mark the job failed
+            # and clean up — never leave it stuck in provisioning/running.
             logger.exception(f"job {job.id}: unexpected error in process_job")
             job.status = JobStatus.FAILED
             job.error_message = f"Unexpected error: {exc}"
@@ -145,6 +149,7 @@ def process_job(self, job_id: str) -> None:
         finally:
             if platform_agent_id:
                 delete_agent(platform_agent_id)
+                # Fix: stamp deleted_at so the column is never left NULL
                 db.query(Agent).filter(Agent.platform_agent_id == platform_agent_id).update(
                     {"status": AgentStatus.DELETED, "deleted_at": _utcnow()}
                 )

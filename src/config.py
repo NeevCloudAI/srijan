@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     mattermost_bot_token: str = ""
     mattermost_base_url: str = ""
 
-# ── Agent Platform (NeevCloud Agentic Studio, via neevai SDK) ───────────
+    # ── Agent Platform (NeevCloud Agentic Studio, via neevai SDK) ─────────
     neev_api_key: str = ""
     neev_org_id: str = ""
     neev_project_id: str = ""
@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     # Credentials injected into agent sandboxes (never logged, never hardcoded)
     github_token: str = ""              # dev agent — write access, clones repo + opens PR
     github_token_readonly: str = ""     # debug agent — read-only
-    k8s_credentials: str = ""           # debug agent — short-lived read-only cluster token
-    signdz_api_key: str = ""            # debug agent — platform API, read-only
-    readonly_db_url: str = ""           # debug agent — read-only application DB (NOT srijan's own DB)
+    k8s_credentials: str = ""          # debug agent — short-lived read-only cluster token
+    signdz_api_key: str = ""           # debug agent — platform API, read-only
+    readonly_db_url: str = ""          # debug agent — read-only application DB (NOT srijan's own DB)
 
     # Egress allow-lists (comma-separated hostnames)
     dev_agent_egress_hosts: str = "github.com,api.anthropic.com"
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     debug_agent_command_template: str = 'claude-code --print {task}'
 
     # Hard ceiling on how long a single job may run (Celery task time limit)
-    agent_task_time_limit_seconds: int = 900   # 15 minutes, per design doc
+    agent_task_time_limit_seconds: int = 900        # 15 minutes, per design doc
     agent_task_soft_time_limit_seconds: int = 870
     agent_ready_poll_interval_seconds: int = 10
 
