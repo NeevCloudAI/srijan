@@ -76,7 +76,7 @@ def process_job(self, job_id: str) -> None:
             nonlocal buffer, buffer_len
             buffer.append(text)
             buffer_len += len(text)
-    flush_progress()
+            flush_progress()
 
         try:
             logger.info(f"Picked up job {job.id} ({job.command_type}): {job.task_text!r}")
