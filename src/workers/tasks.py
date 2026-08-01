@@ -1,9 +1,6 @@
-from amqp import basic_message
 import uuid
 
 from celery.exceptions import SoftTimeLimitExceeded
-
-
 
 from src.agents.client import (
     AgentPlatformError,
@@ -11,11 +8,9 @@ from src.agents.client import (
     delete_agent,
     run_agent_task,
 )
-from src.agents.templates import get_agent_spec
 from src.chat.client import MattermostClient
 from src.config import settings
 from src.db.constants import AgentStatus, JobStatus
-from src.db.models import Agent, Job, Log, _utcnow
 from src.db.models import Agent, Job, Log, _utcnow
 from src.db.sync_session import get_sync_db
 from src.logging import get_logger
@@ -91,8 +86,6 @@ def process_job(self, job_id: str) -> None:
                 on_progress=on_progress,
             )
 
-            # Fix: store the actual template used, not the command type string
-            actual_template = get_agent_spec(job.command_type).template
             db.add(Agent(
                 job_id=job.id,
                 platform_agent_id=platform_agent_id,
