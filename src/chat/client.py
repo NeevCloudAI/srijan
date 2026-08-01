@@ -23,6 +23,10 @@ class MattermostClient:
         threaded under that post instead of starting a new thread.
         Returns the created post (includes its id, useful as a future root_id).
         """
+        if not self._base_url:
+            logger.debug("Mattermost not configured; dropping message")
+            return {}
+
         payload = {"channel_id": channel_id, "message": message}
         if root_id:
             payload["root_id"] = root_id
