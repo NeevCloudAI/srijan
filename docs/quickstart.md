@@ -30,103 +30,79 @@ cd srijan
 cp .env.example .env
 ```
 
-Open `.env` and fill in all values:
+Open `.env` and fill in the values (see `.env.example` for the full list):
 
 ```env
-# Mattermost — get token from slash command settings (Step 9)
+# Mattermost — get token from slash command settings (Step 6)
 MATTERMOST_TOKEN=your_verification_token
 MATTERMOST_BOT_TOKEN=your_bot_token
 MATTERMOST_BASE_URL=https://your-mattermost-instance.com
 
-# Agent Platform
-AGENT_PLATFORM_BASE_URL=https://api.your-agent-platform.com
-AGENT_PLATFORM_API_KEY=your_api_key
-AGENT_PLATFORM_ORG_ID=your_org_id
-AGENT_PLATFORM_PROJECT_ID=your_project_id
+# Agent Platform — NEEV_API_KEY must be a project API key created with the
+# "aiagent" resource type. PATs and inference-scoped keys are rejected by
+# the sandbox data plane.
+NEEV_API_KEY=your_neev_api_key
+NEEV_ORG_ID=your_org_id
+NEEV_PROJECT_ID=your_project_id
 
-# Leave as-is for local dev (matches docker-compose.yml)
-DATABASE_URL=postgresql+asyncpg://srijan:srijan@localhost:5432/srijan
-REDIS_URL=redis://localhost:6379/0
+# Which agent template each command uses (claude-code or opencode)
+DEV_AGENT_TEMPLATE=opencode
+DEBUG_AGENT_TEMPLATE=opencode
 
-APP_ENV=development
-LOG_LEVEL=INFO
+# Required when using the opencode template — no code defaults
+INFERENCE_API_KEY=your_inference_api_key
+INFERENCE_BASE_URL=https://inference.ai.neevcloud.com/v1
+INFERENCE_MODEL=minimax-m3
 ```
+
+`DATABASE_URL` and `REDIS_URL` can be left unset — docker compose points the
+app containers at the bundled Postgres and Redis.
 
 ---
 
-## Step 3 — Start PostgreSQL and Redis
+## Step 3 — Start the full stack
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-Verify both are running:
+This builds the app image and starts four containers: PostgreSQL (with the
+SQL files in `migrations/` applied automatically on first boot), Redis, the
+webhook server on port 8000, and the Celery worker.
+
+If a host port is already taken, override it, e.g.:
+
+```bash
+SRIJAN_POSTGRES_HOST_PORT=5434 docker compose up -d --build
+```
+
+> Migrations only run when the Postgres data volume is created. After pulling
+> new migration files, apply them manually with psql or reset with
+> `docker compose down -v`.
+
+---
+
+## Step 4 — Verify everything is up
 
 ```bash
 docker compose ps
 ```
 
----
-
-## Step 4 — Apply the database migration
-
-```bash
-PGPASSWORD=srijan psql -h localhost -U srijan -d srijan -f migrations/v0.1.0_initial_schema.sql
-```
-
-Expected output:
-```
-CREATE EXTENSION
-CREATE TABLE   ← jobs
-CREATE TABLE   ← agents
-CREATE TABLE   ← logs
-CREATE INDEX
-```
-
----
-
-## Step 5 — Install dependencies
-
-```bash
-pip install -e .
-```
-
----
-
-## Step 6 — Start the webhook server
-
-```bash
-uvicorn src.main:app --reload --port 8000
-```
-
-Verify it's up:
+All four containers should be `Up` (postgres and redis `healthy`). Then:
 
 ```bash
 curl http://localhost:8000/health
 # {"status": "ok", "service": "srijan"}
 ```
 
----
-
-## Step 7 — Start the Celery worker
-
-Open a second terminal in the same directory:
-
 ```bash
-celery -A src.workers.celery_app worker -Q dev-queue,debug-queue --loglevel=info
-```
-
-You should see:
-```
-[tasks]
-  . workers.process_job
-
-[celery@hostname ready.]
+docker compose logs worker | grep ready
+# celery@<container> ready.
 ```
 
 ---
 
-## Step 8 — Expose your local server to Mattermost
+## Step 5 — Expose your local server to Mattermost
 
 Mattermost needs a public URL to POST webhook requests to. Use [ngrok](https://ngrok.com):
 
@@ -138,7 +114,7 @@ Copy the HTTPS forwarding URL (e.g. `https://abc123.ngrok.io`) — you need it i
 
 ---
 
-## Step 9 — Register slash commands in Mattermost
+## Step 6 — Register slash commands in Mattermost
 
 Go to **Main Menu → Integrations → Slash Commands → Add Slash Command** and create two commands:
 
@@ -164,7 +140,7 @@ After saving each command, Mattermost shows a **Verification Token**. Copy it an
 
 ---
 
-## Step 10 — Test it
+## Step 7 — Test it
 
 In any Mattermost channel, type:
 
@@ -177,12 +153,12 @@ In any Mattermost channel, type:
 Working on it! I'll update this thread shortly.
 ```
 
-**You should see in the webhook server terminal:**
+**You should see in the webhook server logs (`docker compose logs webhook-server`):**
 ```
 INFO: POST /webhook/dev → 200
 ```
 
-**You should see in the Celery worker terminal:**
+**You should see in the Celery worker logs (`docker compose logs worker`):**
 ```
 Picked up job <uuid> (dev): 'fix the login 404 bug'
 INFO: Provisioning agent for job <uuid>
@@ -194,15 +170,15 @@ INFO: Agent deleted after completion
 
 ---
 
-## Step 11 — Verify the database
+## Step 8 — Verify the database
 
 ```bash
-PGPASSWORD=srijan psql -h localhost -U srijan -d srijan \
+docker exec srijan_postgres psql -U srijan -d srijan \
   -c "SELECT command_type, status, created_at FROM jobs ORDER BY created_at DESC LIMIT 5;"
 ```
 
 ```bash
-PGPASSWORD=srijan psql -h localhost -U srijan -d srijan \
+docker exec srijan_postgres psql -U srijan -d srijan \
   -c "SELECT job_id, platform_agent_id, status FROM agents ORDER BY created_at DESC LIMIT 5;"
 ```
 
@@ -241,7 +217,7 @@ The `MATTERMOST_TOKEN` in `.env` doesn't match what Mattermost sends. Copy the t
 Check Redis is running (`docker compose ps`) and the worker is subscribed to both queues (`-Q dev-queue,debug-queue`).
 
 **Agent Platform connection error**
-Verify `AGENT_PLATFORM_BASE_URL`, `AGENT_PLATFORM_API_KEY`, `AGENT_PLATFORM_ORG_ID`, and `AGENT_PLATFORM_PROJECT_ID` are all set correctly in `.env`.
+Verify `NEEV_API_KEY`, `NEEV_ORG_ID`, and `NEEV_PROJECT_ID` are all set correctly in `.env`. A `401` on the sandbox data plane means the key isn't an `aiagent`-scoped project API key.
 
 **Agent stuck in `Provisioning`**
 The Agent Platform may be slow or rate-limiting. The worker polls every 10 seconds with a 15-minute hard timeout — check the Celery worker logs for polling status.
@@ -249,5 +225,7 @@ The Agent Platform may be slow or rate-limiting. The worker polls every 10 secon
 **`asyncpg` connection error**
 Ensure PostgreSQL is running (`docker compose ps`) and `DATABASE_URL` matches the credentials in `docker-compose.yml` (`srijan`/`srijan`).
 
-**Port 8000 already in use**
-Change the port: `uvicorn src.main:app --reload --port 8001` and update your ngrok tunnel.
+**Host port already in use**
+Override the published port(s): `SRIJAN_API_HOST_PORT=8001 docker compose up -d`
+(also available: `SRIJAN_POSTGRES_HOST_PORT`, `SRIJAN_REDIS_HOST_PORT`). Update
+your ngrok tunnel if you changed the API port.
