@@ -45,9 +45,11 @@ class Settings(BaseSettings):
     signdz_api_key: str = ""           # debug agent — platform API, read-only
     readonly_db_url: str = ""          # debug agent — read-only application DB (NOT srijan's own DB)
 
-    # Egress allow-lists (comma-separated hostnames)
-    dev_agent_egress_hosts: str = "github.com,api.anthropic.com"
-    debug_agent_egress_hosts: str = "api.anthropic.com"
+    # Egress allow-lists (comma-separated hostnames). Empty means "don't
+    # override": the platform applies the template's default_egress
+    # allow-list, which already covers model providers and toolchain hosts.
+    dev_agent_egress_hosts: str = ""
+    debug_agent_egress_hosts: str = ""
 
     # Command template run inside the agent sandbox. {task} is replaced with
     # the user's task text. Empty means "use the agent adapter's default"

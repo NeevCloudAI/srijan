@@ -9,7 +9,7 @@ Get Srijan running locally end-to-end — from slash command to a provisioned AI
 ## Prerequisites
 
 - Python 3.11+
-- Docker + Docker Compose
+- Docker + Docker Compose 2.24+ (the compose file uses optional `env_file` entries)
 - A Mattermost instance with admin access (to register slash commands)
 - Agent Platform credentials (base URL, API key, org ID, project ID)
 
@@ -75,6 +75,9 @@ If a host port is already taken, override it, e.g.:
 ```bash
 SRIJAN_POSTGRES_HOST_PORT=5434 docker compose up -d --build
 ```
+
+If you override `SRIJAN_API_HOST_PORT`, use that port instead of `8000` in
+the `curl` and `ngrok` commands below (Steps 4 and 5).
 
 > Migrations only run when the Postgres data volume is created. After pulling
 > new migration files, apply them manually with psql or reset with
@@ -144,22 +147,22 @@ After saving each command, Mattermost shows a **Verification Token**. Copy it an
 
 In any Mattermost channel, type:
 
-```
+```text
 /neevai-dev fix the login 404 bug
 ```
 
 **You should see in Mattermost (immediate, < 3 seconds):**
-```
+```text
 Working on it! I'll update this thread shortly.
 ```
 
 **You should see in the webhook server logs (`docker compose logs webhook-server`):**
-```
+```text
 INFO: POST /webhook/dev → 200
 ```
 
 **You should see in the Celery worker logs (`docker compose logs worker`):**
-```
+```text
 Picked up job <uuid> (dev): 'fix the login 404 bug'
 INFO: Provisioning agent for job <uuid>
 INFO: Agent <platform_agent_id> status: Provisioning
