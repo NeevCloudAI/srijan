@@ -67,38 +67,54 @@ def run_agent_task(
             org_id=settings.neev_org_id,
             project_id=settings.neev_project_id,
         ) as client:
-            agent = client.agents.create({
+            create_params = {
                 "name": agent_name,
                 "agent_template": spec.template,
                 "env": [{"name": k, "value": v} for k, v in spec.env.items() if v],
-                "egress": {
+            }
+            # Omitting egress falls back to the template's default_egress,
+            # which already allow-lists the model providers and toolchain
+            # hosts the agent needs. Only override when explicitly configured.
+            if spec.egress_hosts:
+                create_params["egress"] = {
                     "mode": "allow_list",
                     "allow": [{"host": host} for host in spec.egress_hosts],
-                },
-            })
+                }
+            agent = client.agents.create(create_params)
 
             platform_agent_id = agent.id
             logger.info(f"job {job_id}: created agent {platform_agent_id} (template={spec.template})")
 
+            # From here on the agent exists on the platform; if anything below
+            # fails the caller never learns its id, so clean it up here rather
+            # than leaking a running sandbox.
             try:
-                agent.wait_until_ready()
-            except NeevAIError as exc:
-                raise AgentPlatformError(f"agent failed to become Ready: {exc}") from exc
+                try:
+                    agent.wait_until_ready()
+                except NeevAIError as exc:
+                    raise AgentPlatformError(f"agent failed to become Ready: {exc}") from exc
 
-            on_progress("Agent is ready. Starting task…")
-            sandbox = agent.sandbox()
+                on_progress("Agent is ready. Starting task…")
+                sandbox = agent.sandbox()
 
-            command = spec.build_command(task_text)
-            proc = sandbox.processes.start(command)
+                command = spec.build_command(task_text)
+                proc = sandbox.processes.start(command)
 
-            exit_code: int | None = None
-            for event in proc.follow():
-                if event["type"] == "stdout":
-                    chunk = event["data"]
-                    output_lines.append(chunk)
-                    on_progress(chunk)
-                elif event["type"] == "exit":
-                    exit_code = event["exit_code"]
+                exit_code: int | None = None
+                for event in proc.follow():
+                    if event["type"] == "stdout":
+                        chunk = event["data"]
+                        output_lines.append(chunk)
+                        on_progress(chunk)
+                    elif event["type"] == "exit":
+                        exit_code = event["exit_code"]
+            except Exception:
+                try:
+                    client.agents.delete(platform_agent_id)
+                    logger.info(f"job {job_id}: cleaned up agent {platform_agent_id} after failure")
+                except Exception as cleanup_exc:
+                    logger.warning(f"job {job_id}: failed to clean up agent {platform_agent_id}: {cleanup_exc}")
+                raise
 
             full_output = "".join(output_lines)
             pr_match = _PR_URL_RE.search(full_output)

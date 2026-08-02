@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.example
+.venv
+__pycache__
+*.py[cod]
+docs
+scripts
+migrations
+LICENSE
+README.md
+docker-compose.yml
+docker-compose.override.yml
+Dockerfile
+.dockerignore
